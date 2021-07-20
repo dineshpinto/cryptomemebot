@@ -10,6 +10,10 @@ import config
 from reddit_meme_farmer import RedditMemeFarmer
 from datetime import time
 from spongebobcase import tospongebob
+import random
+
+from chatterbot import ChatBot
+from chatterbot.trainers import ChatterBotCorpusTrainer
 
 
 class TelegramBotManager(RedditMemeFarmer):
@@ -35,7 +39,9 @@ class TelegramBotManager(RedditMemeFarmer):
         self.dispatcher.add_handler(CommandHandler("help", self.help))
         self.dispatcher.add_handler(CommandHandler("meme", self.send_meme))
         self.dispatcher.add_handler(CommandHandler("dailymeme", self.daily_meme_start))
-        # self.dispatcher.add_handler(CommandHandler("dailymemestop", self.daily_meme_stop))
+        self.dispatcher.add_handler(CommandHandler("dailymemestop", self.daily_meme_stop))
+        self.dispatcher.add_handler(CommandHandler("conversationstart", self.chatbot_start))
+        self.dispatcher.add_handler(CommandHandler("conversationstop", self.chatbot_stop))
 
         # add an handler for normal text (not commands)
         self.dispatcher.add_handler(MessageHandler(Filters.text, self.text))
@@ -49,10 +55,8 @@ class TelegramBotManager(RedditMemeFarmer):
         self.logger.info(startup_text)
 
         # set up variables
-        self.trades = []
-        self.market = None
-        self.trades_1h_json = "trades_1h.json"
-        self.trades_4h_json = "trades_4h.json"
+        self.chatbot = ChatBot("CryptoMemeBot")
+        self.chatbot_state = False
 
     def send_message(self, message: str) -> Message:
         return self._updater.bot.send_message(self._chat_id, text=message)
@@ -93,6 +97,9 @@ class TelegramBotManager(RedditMemeFarmer):
         msg = "The following commands are available:\n" \
               "/meme: Fetch a dank meme\n" \
               "/dailymeme: Fetch a meme daily at 9:30 AM\n" \
+              "/dailymemestop: Stop fetching daily memes\n" \
+              "/conversationstart: Start talking with a trained chat bot\n" \
+              "/conversationstop: Stop the chat bot\n" \
               "/help: This help page"
         self.send_message(msg)
 
@@ -103,16 +110,14 @@ class TelegramBotManager(RedditMemeFarmer):
 
     def _send_meme_daily(self, context: CallbackContext):
         filepath = RedditMemeFarmer.get_crypto_meme_path(self)
-        # context.bot.send_message(chat_id=context.job.context, text='BEEP')
-        # self.send_captioned_media(filepath)
         filename, ext = os.path.splitext(os.path.basename(filepath))
 
         if ext == ".jpg" or ext == ".png":
             context.bot.send_photo(chat_id=context.job.context, photo=open(filepath, "rb"), caption=filename)
         elif ext == ".gif":
-            context.bot.send_animation(chat_id=context.job.context, video=open(filepath, "rb"), caption=filename)
+            context.bot.send_animation(chat_id=context.job.context, amnimation=open(filepath, "rb"), caption=filename)
         elif ext == ".mp4":
-            context.bot.send_video(chat_id=context.job.context, amnimation=open(filepath, "rb"),
+            context.bot.send_video(chat_id=context.job.context, video=open(filepath, "rb"),
                                    supports_streaming=True, caption=filename)
 
     def send_meme(self, update: Update, _: CallbackContext):
@@ -128,23 +133,47 @@ class TelegramBotManager(RedditMemeFarmer):
         context.job_queue.run_daily(self._send_meme_daily, context=update.message.chat_id,
                                     days=(0, 1, 2, 3, 4, 5, 6), time=daily_meme_time)
 
-    def daily_meme_stop(self, update: Update, job_queue: JobQueue):
+    def daily_meme_stop(self, update: Update, context: CallbackContext):
         self._updater.bot.send_message(chat_id=update.message.chat_id,
                                        text=f"Daily meme stopped")
-        job_queue.stop()
+        context.job_queue.stop()
+
+    def chatbot_start(self, update: Update, context: CallbackContext):
+        self._updater.bot.send_message(chat_id=update.message.chat_id,
+                                       text="Starting and training chatbot in English")
+        # Create a new trainer for the chatbot
+        trainer = ChatterBotCorpusTrainer(self.chatbot)
+
+        # Train the chatbot based on the english corpus
+        trainer.train("chatterbot.corpus.english")
+
+        self._updater.bot.send_message(chat_id=update.message.chat_id,
+                                       text="Training complete, chatbot is ready!")
+
+        self.chatbot_state = True
+
+    def chatbot_stop(self, update: Update, context: CallbackContext):
+        self._updater.bot.send_message(chat_id=update.message.chat_id,
+                                       text="Chatbot stopped")
+        self.chatbot_state = False
 
     # function to handle normal text
-    @staticmethod
-    def text(update: Update, context: CallbackContext):
+    def text(self, update: Update, context: CallbackContext):
         msg_text = update.message.text
         antagonistics = ["annoying", "sad", "boring", "poor"]
 
-        if "bad bot" in msg_text.lower():
-            update.message.reply_text(f"I'm sorry, I will try harder next time 😭")
-        if "good bot" in msg_text.lower():
-            update.message.reply_text(f"Woohoo, I aim to please 😊")
-        if any(antagonistic in msg_text.lower() for antagonistic in antagonistics):
-            update.message.reply_text(tospongebob(msg_text))
+        if not self.chatbot_state:
+            if "bad bot" in msg_text.lower():
+                responses = ["I'm sorry, I will try harder next time 😭", "But please sir, I am but a mere bot...😓"]
+                update.message.reply_text(random.choice(responses))
+            if "good bot" in msg_text.lower():
+                responses = ["Woohoo, I aim to please 😊", f"Thank you very much {update.effective_user}! 😉"]
+                update.message.reply_text(random.choice(responses))
+            if any(antagonistic in msg_text.lower() for antagonistic in antagonistics):
+                update.message.reply_text(tospongebob(msg_text))
+        else:
+            response = self.chatbot.get_response(msg_text).text
+            update.message.reply_text(response)
 
     def start_polling(self):
         # start your shiny new bot
