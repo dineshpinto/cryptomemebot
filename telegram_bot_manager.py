@@ -1,19 +1,21 @@
+import html
+import json
 import logging
 import os
+import random
 import sys
-import pytz
+import traceback
+from datetime import time
 
-from telegram import Update, Message
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, JobQueue
+import pytz
+from chatterbot import ChatBot
+from chatterbot.trainers import ChatterBotCorpusTrainer
+from spongebobcase import tospongebob
+from telegram import Update, Message, ParseMode
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 
 import config
 from reddit_meme_farmer import RedditMemeFarmer
-from datetime import time
-from spongebobcase import tospongebob
-import random
-
-from chatterbot import ChatBot
-from chatterbot.trainers import ChatterBotCorpusTrainer
 
 
 class TelegramBotManager(RedditMemeFarmer):
@@ -47,7 +49,7 @@ class TelegramBotManager(RedditMemeFarmer):
         self.dispatcher.add_handler(MessageHandler(Filters.text, self.text))
 
         # add an handler for errors
-        self.dispatcher.add_error_handler(self.error)
+        self.dispatcher.add_error_handler(self.error_handler)
 
         bot_name, bot_username = self._updater.bot.get_me()["first_name"], self._updater.bot.get_me()["username"]
         startup_text = f'{bot_name} (@{bot_username}) is now running using Telegram' \
@@ -104,9 +106,31 @@ class TelegramBotManager(RedditMemeFarmer):
         self.send_message(msg)
 
     # function to handle errors occurred in the dispatcher
-    @staticmethod
-    def error(update: Update, context: CallbackContext):
-        update.message.reply_text(f'An error occurred: {context.error}')
+    def error_handler(self, update: object, context: CallbackContext):
+        context.bot.send_message(f'An error occurred: {context.error}')
+        """Log the error and send a telegram message to notify the developer."""
+        # Log the error before we do anything else, so we can see it even if something breaks.
+        self.logger.error(msg="Exception while handling an update:", exc_info=context.error)
+
+        # traceback.format_exception returns the usual python message about an exception, but as a
+        # list of strings rather than a single string, so we have to join them together.
+        tb_list = traceback.format_exception(None, context.error, context.error.__traceback__)
+        tb_string = ''.join(tb_list)
+
+        # Build the message with some markup and additional information about what happened.
+        # You might need to add some logic to deal with messages longer than the 4096 character limit.
+        update_str = update.to_dict() if isinstance(update, Update) else str(update)
+        message = (
+            f'An exception was raised while handling an update\n'
+            f'<pre>update = {html.escape(json.dumps(update_str, indent=2, ensure_ascii=False))}'
+            '</pre>\n\n'
+            f'<pre>context.chat_data = {html.escape(str(context.chat_data))}</pre>\n\n'
+            f'<pre>context.user_data = {html.escape(str(context.user_data))}</pre>\n\n'
+            f'<pre>{html.escape(tb_string)}</pre>'
+        )
+
+        # Finally, send the message
+        context.bot.send_message(chat_id=self._chat_id, text=message, parse_mode=ParseMode.HTML)
 
     def _send_meme_daily(self, context: CallbackContext):
         filepath = RedditMemeFarmer.get_crypto_meme_path(self)
@@ -138,7 +162,7 @@ class TelegramBotManager(RedditMemeFarmer):
                                        text=f"Daily meme stopped")
         context.job_queue.stop()
 
-    def chatbot_start(self, update: Update, context: CallbackContext):
+    def chatbot_start(self, update: Update, _: CallbackContext):
         self._updater.bot.send_message(chat_id=update.message.chat_id,
                                        text="Starting and training chatbot in English")
         # Create a new trainer for the chatbot
@@ -152,22 +176,28 @@ class TelegramBotManager(RedditMemeFarmer):
 
         self.chatbot_state = True
 
-    def chatbot_stop(self, update: Update, context: CallbackContext):
+    def chatbot_stop(self, update: Update, _: CallbackContext):
         self._updater.bot.send_message(chat_id=update.message.chat_id,
                                        text="Chatbot stopped")
         self.chatbot_state = False
 
     # function to handle normal text
-    def text(self, update: Update, context: CallbackContext):
+    def text(self, update: Update, _: CallbackContext):
         msg_text = update.message.text
         antagonistics = ["annoying", "sad", "boring", "poor"]
 
         if not self.chatbot_state:
             if "bad bot" in msg_text.lower():
-                responses = ["I'm sorry, I will try harder next time 😭", "But please sir, I am but a mere bot...😓"]
+                responses = [
+                    f"I'm sorry {update.effective_user.first_name}, I will try harder next time 😭",
+                    f"But please {update.effective_user.first_name}, I am but a mere bot...😓"
+                ]
                 update.message.reply_text(random.choice(responses))
             if "good bot" in msg_text.lower():
-                responses = ["Woohoo, I aim to please 😊", f"Thank you very much {update.effective_user}! 😉"]
+                responses = [
+                    f"Woohoo, thanks {update.effective_user.first_name}, I aim to please 😊",
+                    f"Thank you very much {update.effective_user.first_name}! 😉"
+                ]
                 update.message.reply_text(random.choice(responses))
             if any(antagonistic in msg_text.lower() for antagonistic in antagonistics):
                 update.message.reply_text(tospongebob(msg_text))
