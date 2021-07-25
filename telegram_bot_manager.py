@@ -58,7 +58,7 @@ class TelegramBotManager(RedditMemeFarmer):
 
         # set up variables
         self.chatbot = ChatBot("CryptoMemeBot")
-        self.chatbot_state = False
+        self.chatbot_on = False
 
     def send_message(self, message: str) -> Message:
         return self._updater.bot.send_message(self._chat_id, text=message)
@@ -174,19 +174,19 @@ class TelegramBotManager(RedditMemeFarmer):
         self._updater.bot.send_message(chat_id=update.message.chat_id,
                                        text="Training complete, chatbot is ready!")
 
-        self.chatbot_state = True
+        self.chatbot_on = True
 
     def chatbot_stop(self, update: Update, _: CallbackContext):
         self._updater.bot.send_message(chat_id=update.message.chat_id,
                                        text="Chatbot stopped")
-        self.chatbot_state = False
+        self.chatbot_on = False
 
     # function to handle normal text
     def text(self, update: Update, _: CallbackContext):
         msg_text = update.message.text
         antagonistics = ["annoying", "sad", "boring", "poor"]
 
-        if not self.chatbot_state:
+        if not self.chatbot_on:
             if "bad bot" in msg_text.lower():
                 responses = [
                     f"I'm sorry {update.effective_user.first_name}, I will try harder next time 😭",
