@@ -24,6 +24,7 @@ class RedditMemeFarmer:
         self.logger.info(f"Memes saved to {self.meme_folderpath}")
         self.meme_subreddit = subreddit
         self.submission_titles = []
+        self.limit = 10
 
     @staticmethod
     def create_data_directory(folder) -> str:
@@ -48,7 +49,7 @@ class RedditMemeFarmer:
 
     def get_crypto_meme_path(self) -> Union[str, bool]:
         try:
-            for submission in self.rbot.subreddit(self.meme_subreddit).hot(limit=5):
+            for submission in self.rbot.subreddit(self.meme_subreddit).hot(limit=self.limit):
                 if submission.is_self:
                     # Filter out text posts
                     continue
@@ -74,3 +75,8 @@ class RedditMemeFarmer:
         except Exception as exc:
             self.logger.warning(f"Failed to download. {exc}")
             return False
+        else:
+            self.limit += 5
+            self.logger.warning(f"No unique memes found, increasing limit to {self.limit}")
+            return self.get_crypto_meme_path()
+

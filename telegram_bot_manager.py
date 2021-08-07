@@ -12,7 +12,7 @@ from chatterbot import ChatBot
 from chatterbot.trainers import ChatterBotCorpusTrainer
 from spongebobcase import tospongebob
 from telegram import Update, Message, ParseMode
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, Job
 
 import config
 from reddit_meme_farmer import RedditMemeFarmer
@@ -39,7 +39,7 @@ class TelegramBotManager(RedditMemeFarmer):
         # add handlers for start and help commands
         self.dispatcher.add_handler(CommandHandler("start", self.start))
         self.dispatcher.add_handler(CommandHandler("help", self.help))
-        self.dispatcher.add_handler(CommandHandler("meme", self.send_meme))
+        self.dispatcher.add_handler(CommandHandler("meme", self.get_meme))
         self.dispatcher.add_handler(CommandHandler("dailymeme", self.daily_meme_start))
         self.dispatcher.add_handler(CommandHandler("dailymemestop", self.daily_meme_stop))
         self.dispatcher.add_handler(CommandHandler("conversationstart", self.chatbot_start))
@@ -72,22 +72,6 @@ class TelegramBotManager(RedditMemeFarmer):
 
     def send_animation(self, animation_path: str, caption: str = None) -> Message:
         return self._updater.bot.send_animation(self._chat_id, animation=open(animation_path, "rb"), caption=caption)
-
-    def send_captioned_media(self, filepath: str) -> bool:
-        """ The filepath consists of the full path, name of the file and the extension."""
-        filename, ext = os.path.splitext(os.path.basename(filepath))
-
-        if ext == ".jpg" or ext == ".png":
-            self.send_photo(filepath, caption=filename)
-        elif ext == ".gif":
-            self.send_animation(filepath, caption=filename)
-        elif ext == ".mp4":
-            self.send_video(filepath, caption=filename)
-        else:
-            self.logger.warning(f"Unrecognized extension '{ext}' in '{filepath}'")
-            return False
-        self.logger.info(f"Sent {filepath} to Telegram chat")
-        return True
 
     # function to handle the /start command
     @staticmethod
@@ -133,33 +117,38 @@ class TelegramBotManager(RedditMemeFarmer):
         # Finally, send the message
         context.bot.send_message(chat_id=self._chat_id, text=message, parse_mode=ParseMode.HTML)
 
-    def _send_meme_daily(self, context: CallbackContext):
+    def _send_meme(self, context: CallbackContext):
         filepath = RedditMemeFarmer.get_crypto_meme_path(self)
         filename, ext = os.path.splitext(os.path.basename(filepath))
 
+        # Check if function is called by a Job or directly, and set chat id accordingly
+        if isinstance(context.job, Job):
+            chat_id = context.job.context
+        else:
+            chat_id = self._chat_id
+
         if ext == ".jpg" or ext == ".png":
-            context.bot.send_photo(chat_id=context.job.context, photo=open(filepath, "rb"), caption=filename)
+            context.bot.send_photo(chat_id=chat_id, photo=open(filepath, "rb"), caption=filename)
         elif ext == ".gif":
-            context.bot.send_animation(chat_id=context.job.context, amnimation=open(filepath, "rb"), caption=filename)
+            context.bot.send_animation(chat_id=chat_id, amnimation=open(filepath, "rb"), caption=filename)
         elif ext == ".mp4":
-            context.bot.send_video(chat_id=context.job.context, video=open(filepath, "rb"),
+            context.bot.send_video(chat_id=chat_id, video=open(filepath, "rb"),
                                    supports_streaming=True, caption=filename)
         else:
             text = f"Unknown file extension '{ext}' in filepath"
-            context.bot.send_message(chat_id=context.job.context, text=text)
+            context.bot.send_message(chat_id=chat_id, text=text)
             self.logger.warning(text)
 
-    def send_meme(self, update: Update, _: CallbackContext):
+    def get_meme(self, update: Update, context: CallbackContext):
         update.message.reply_text(f'Fetching a dank meme, just for you...')
-        filepath = RedditMemeFarmer.get_crypto_meme_path(self)
-        self.send_captioned_media(filepath)
+        self._send_meme(context)
 
     def daily_meme_start(self, update: Update, context: CallbackContext):
         daily_meme_time = time(hour=9, minute=30, second=00, tzinfo=pytz.timezone('Europe/Vienna'))
         self._updater.bot.send_message(chat_id=update.message.chat_id,
                                        text=f"Daily meme has been set! You'll be sent a meme at "
                                             f"{daily_meme_time.strftime('%H:%M')} daily")
-        context.job_queue.run_daily(self._send_meme_daily, context=update.message.chat_id,
+        context.job_queue.run_daily(self._send_meme, context=update.message.chat_id,
                                     days=(0, 1, 2, 3, 4, 5, 6), time=daily_meme_time)
 
     def daily_meme_stop(self, update: Update, context: CallbackContext):
