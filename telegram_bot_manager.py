@@ -95,7 +95,8 @@ class TelegramBotManager(RedditMemeFarmer):
         update.message.reply_text('Start command received')
 
     # function to handle the /help command
-    def help(self, update: Update, _: CallbackContext):
+    @staticmethod
+    def help(update: Update, _: CallbackContext):
         msg = "The following commands are available:\n" \
               "/meme: Fetch a dank meme\n" \
               "/dailymeme: Fetch a meme daily at 9:30 AM\n" \
@@ -103,11 +104,11 @@ class TelegramBotManager(RedditMemeFarmer):
               "/conversationstart: Start talking with a trained chat bot\n" \
               "/conversationstop: Stop the chat bot\n" \
               "/help: This help page"
-        self.send_message(msg)
+        update.message.reply_text(msg)
 
     # function to handle errors occurred in the dispatcher
     def error_handler(self, update: object, context: CallbackContext):
-        context.bot.send_message(f'An error occurred: {context.error}')
+        context.bot.send_message(chat_id=self._chat_id, text=f'An error occurred: {context.error}')
         """Log the error and send a telegram message to notify the developer."""
         # Log the error before we do anything else, so we can see it even if something breaks.
         self.logger.error(msg="Exception while handling an update:", exc_info=context.error)
@@ -217,8 +218,9 @@ class TelegramBotManager(RedditMemeFarmer):
             self.logger.info("Stopping telegram bot...")
             self._updater.stop()
             self.logger.info("Telegram bot stopped successfully")
-        except:
-            self.logger.info("Failed to shutdown telegram bot. Please make sure it is correctly terminated")
+        except Exception as exc:
+            self.logger.info(f"Failed to shutdown telegram bot. Please make sure it is correctly terminated. "
+                             f"Exception: {exc}")
 
 
 if __name__ == '__main__':
