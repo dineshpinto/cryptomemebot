@@ -144,6 +144,10 @@ class TelegramBotManager(RedditMemeFarmer):
         elif ext == ".mp4":
             context.bot.send_video(chat_id=context.job.context, video=open(filepath, "rb"),
                                    supports_streaming=True, caption=filename)
+        else:
+            text = f"Unknown file extension '{ext}' in filepath"
+            context.bot.send_message(text)
+            self.logger.warning(text)
 
     def send_meme(self, update: Update, _: CallbackContext):
         update.message.reply_text(f'Fetching a dank meme, just for you...')
