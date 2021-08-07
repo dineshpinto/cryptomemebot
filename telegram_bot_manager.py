@@ -146,7 +146,7 @@ class TelegramBotManager(RedditMemeFarmer):
                                    supports_streaming=True, caption=filename)
         else:
             text = f"Unknown file extension '{ext}' in filepath"
-            context.bot.send_message(text)
+            context.bot.send_message(chat_id=context.job.context, text=text)
             self.logger.warning(text)
 
     def send_meme(self, update: Update, _: CallbackContext):
