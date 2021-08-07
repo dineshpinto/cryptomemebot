@@ -213,14 +213,20 @@ class TelegramBotManager(RedditMemeFarmer):
         # run the bot until Ctrl-C
         self._updater.idle()
 
-    def exit(self):
+    def exit(self, update: Update, _: CallbackContext):
         try:
-            self.logger.info("Stopping telegram bot...")
+            text = f'Shutting down bot'
+            self.logger.info(text)
+            update.message.reply_text(text)
             self._updater.stop()
-            self.logger.info("Telegram bot stopped successfully")
         except Exception as exc:
-            self.logger.info(f"Failed to shutdown telegram bot. Please make sure it is correctly terminated. "
-                             f"Exception: {exc}")
+            text = "Failed to shut down bot"
+            update.message.reply_text(text + f"{exc}")
+            self.logger.warning(text + f"{exc}")
+        else:
+            text = "Bot stopped successfully"
+            update.message.reply_text(text)
+            self.logger.info(text)
 
 
 if __name__ == '__main__':
