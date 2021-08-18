@@ -1,11 +1,12 @@
+import datetime
 import html
 import json
 import logging
 import os
 import random
 import sys
+import time
 import traceback
-from datetime import time
 
 import pytz
 from chatterbot import ChatBot
@@ -17,17 +18,17 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, Callb
 import config
 from reddit_meme_farmer import RedditMemeFarmer
 
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    stream=sys.stdout, level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 class TelegramBotManager(RedditMemeFarmer):
     def __init__(self, group=True):
         super().__init__()
-        logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                            stream=sys.stdout, level=logging.INFO)
-        self.logger = logging.getLogger(__name__)
 
         # create the updater, that will automatically create also a dispatcher and a queue to
         # make them dialogue
-
         if group:
             self._chat_id = config.TELEGRAM_GROUP_CHAT_ID
         else:
@@ -54,7 +55,7 @@ class TelegramBotManager(RedditMemeFarmer):
         bot_name, bot_username = self._updater.bot.get_me()["first_name"], self._updater.bot.get_me()["username"]
         startup_text = f'{bot_name} (@{bot_username}) is now running using Telegram' \
                        f' {"group" if group else "personal"} chat id'
-        self.logger.info(startup_text)
+        logger.info(startup_text)
 
         # set up variables
         self.chatbot = ChatBot("CryptoMemeBot")
@@ -95,7 +96,7 @@ class TelegramBotManager(RedditMemeFarmer):
         context.bot.send_message(chat_id=self._chat_id, text=f'An error occurred: {context.error}')
         """Log the error and send a telegram message to notify the developer."""
         # Log the error before we do anything else, so we can see it even if something breaks.
-        self.logger.error(msg="Exception while handling an update:", exc_info=context.error)
+        logger.error(msg="Exception while handling an update:", exc_info=context.error)
 
         # traceback.format_exception returns the usual python message about an exception, but as a
         # list of strings rather than a single string, so we have to join them together.
@@ -137,14 +138,14 @@ class TelegramBotManager(RedditMemeFarmer):
         else:
             text = f"Unknown file extension '{ext}' in filepath"
             context.bot.send_message(chat_id=chat_id, text=text)
-            self.logger.warning(text)
+            logger.warning(text)
 
     def get_meme(self, update: Update, context: CallbackContext):
         update.message.reply_text(f'Fetching a dank meme, just for you...')
         self._send_meme(context)
 
     def daily_meme_start(self, update: Update, context: CallbackContext):
-        daily_meme_time = time(hour=9, minute=30, second=00, tzinfo=pytz.timezone('Europe/Vienna'))
+        daily_meme_time = datetime.time(hour=9, minute=30, second=00, tzinfo=pytz.timezone('Europe/Vienna'))
         self._updater.bot.send_message(chat_id=update.message.chat_id,
                                        text=f"Daily meme has been set! You'll be sent a meme at "
                                             f"{daily_meme_time.strftime('%H:%M')} daily")
@@ -203,25 +204,34 @@ class TelegramBotManager(RedditMemeFarmer):
         # start your shiny new bot
         self._updater.start_polling()
 
+        logger.info(f"Started polling...")
+
         # run the bot until Ctrl-C
         self._updater.idle()
 
     def exit(self, update: Update, _: CallbackContext):
         try:
             text = f'Shutting down bot'
-            self.logger.info(text)
+            logger.info(text)
             update.message.reply_text(text)
             self._updater.stop()
         except Exception as exc:
             text = "Failed to shut down bot"
             update.message.reply_text(text + f"{exc}")
-            self.logger.warning(text + f"{exc}")
+            logger.warning(text + f"{exc}")
         else:
             text = "Bot stopped successfully"
             update.message.reply_text(text)
-            self.logger.info(text)
+            logger.info(text)
 
 
 if __name__ == '__main__':
-    tbm = TelegramBotManager()
-    tbm.start_polling()
+    try:
+        tbm = TelegramBotManager()
+        tbm.start_polling()
+    except Exception as exc:
+        logger.error(f"Exception {exc}")
+        logger.error(f"Restarting polling in 60s...")
+        time.sleep(60)
+        tbm = TelegramBotManager()
+        tbm.start_polling()
