@@ -59,7 +59,7 @@ class RedditMemeFarmer:
                     url = submission.url
 
                 # Use post title as filename and retain file extension
-                name = submission.title.rstrip()
+                name = submission.title.rstrip().strip("/")
                 ext = os.path.splitext(urlparse(url).path)[1]
                 filepath = os.path.join(self.meme_folderpath, name + ext)
 
