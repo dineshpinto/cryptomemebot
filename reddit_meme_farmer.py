@@ -6,6 +6,7 @@ from typing import Union
 from urllib.parse import urlparse
 from urllib.request import urlretrieve
 
+import moviepy.editor as mp
 import praw
 
 import config
@@ -50,6 +51,7 @@ class RedditMemeFarmer:
     def get_crypto_meme_path(self) -> Union[str, bool]:
         try:
             for submission in self.rbot.subreddit(self.meme_subreddit).hot(limit=self.limit):
+                # Filter out different types of posts
                 if submission.is_self:
                     # Filter out text posts
                     continue
@@ -61,15 +63,34 @@ class RedditMemeFarmer:
                 # Use post title as filename and retain file extension
                 name = submission.title.rstrip().strip("/")
                 ext = os.path.splitext(urlparse(url).path)[1]
-                filepath = os.path.join(self.meme_folderpath, name + ext)
 
+                # Check if meme already exists
                 current_memes = [meme for meme in os.listdir(self.meme_folderpath) if
                                  os.path.isfile(os.path.join(self.meme_folderpath, meme))]
-
                 if name + ext in current_memes:
                     continue
 
-                urlretrieve(url, filepath)
+                # Download meme and save to filepath
+                if submission.is_video:
+                    # Handler for video files, download video and audio separately,
+                    # combine them, and then delete the temporary video and audio file
+                    audio_url = url[:-7] + "audio.mp4"
+                    filepath = os.path.join(self.meme_folderpath, name + ext)
+
+                    temp_video_filepath = os.path.join(self.meme_folderpath, "temp_" + name + ext)
+                    temp_audio_filepath = os.path.join(self.meme_folderpath, "temp_" + name + "_audio" + ext)
+                    urlretrieve(url, temp_video_filepath)
+                    urlretrieve(audio_url, temp_audio_filepath)
+
+                    video = mp.VideoFileClip(temp_video_filepath)
+                    video.write_videofile(filepath, audio=temp_audio_filepath)
+
+                    os.remove(temp_audio_filepath)
+                    os.remove(temp_video_filepath)
+                else:
+                    filepath = os.path.join(self.meme_folderpath, name + ext)
+                    urlretrieve(url, filepath)
+
                 self.logger.info(f"Downloaded {url} from r/{self.meme_subreddit} and saved to {filepath}")
                 return filepath
         except Exception as exc:
@@ -79,4 +100,3 @@ class RedditMemeFarmer:
             self.limit += 5
             self.logger.warning(f"No unique memes found, increasing limit to {self.limit}")
             return self.get_crypto_meme_path()
-
