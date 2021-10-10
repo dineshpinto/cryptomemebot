@@ -131,7 +131,7 @@ class TelegramBotManager(RedditMemeFarmer):
         if ext == ".jpg" or ext == ".png":
             context.bot.send_photo(chat_id=chat_id, photo=open(filepath, "rb"), caption=filename)
         elif ext == ".gif":
-            context.bot.send_animation(chat_id=chat_id, amnimation=open(filepath, "rb"), caption=filename)
+            context.bot.send_animation(chat_id=chat_id, animation=open(filepath, "rb"), caption=filename)
         elif ext == ".mp4":
             context.bot.send_video(chat_id=chat_id, video=open(filepath, "rb"),
                                    supports_streaming=True, caption=filename)
