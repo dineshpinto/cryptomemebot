@@ -47,13 +47,15 @@ class RedditMemeFarmer:
                                 client_secret=REDDIT_SECRET,
                                 user_agent=REDDIT_USER_AGENT)
         self.meme_folderpath = self.create_data_directory(folder)
-        self.logger.info(f"Memes saved to {self.meme_folderpath}")
         self.meme_subreddit = subreddit
+        self.logger.info(f"Memes from r/{self.meme_subreddit} will be saved to {self.meme_folderpath}")
+
         self.submission_titles = []
         self.limit = 10
 
     @staticmethod
     def create_data_directory(folder: str) -> str:
+        """ Check if given directory exists, if not, create it. """
         data_dir = os.path.join(os.getcwd(), folder)
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
@@ -62,6 +64,7 @@ class RedditMemeFarmer:
 
     @staticmethod
     def parse_filename_from_url(url: str) -> str:
+        """ Extract filename to save file with from URL. """
         filename = url.split("/")
 
         if len(filename) == 0:
@@ -73,7 +76,36 @@ class RedditMemeFarmer:
             filename += ".jpg"
         return filename
 
+    def __video_handler(self, url: str, name: str, ext: str):
+        """
+        Handler for video files, download video and audio separately,
+        combine them, and then delete the temporary video and audio file.
+        """
+        audio_url = url[:-7] + "audio.mp4"
+        filepath = os.path.join(self.meme_folderpath, name + ext)
+
+        temp_video_filepath = os.path.join(self.meme_folderpath, "temp_" + name + ext)
+        temp_audio_filepath = os.path.join(self.meme_folderpath, "temp_" + name + "_audio" + ext)
+        urlretrieve(url, temp_video_filepath)
+        urlretrieve(audio_url, temp_audio_filepath)
+
+        video = mp.VideoFileClip(temp_video_filepath)
+        video.write_videofile(filepath, audio=temp_audio_filepath)
+
+        os.remove(temp_audio_filepath)
+        os.remove(temp_video_filepath)
+        return filepath
+
     def get_crypto_meme_path(self) -> Union[str, bool]:
+        """
+        Query Reddit API to get the hottest memes, save them and return
+        the filepath.
+
+        - Text posts are filtered out
+        - For image files, download directly with urlretrieve
+        - For video files, download video and audio separately and combine
+        them with moviepy
+        """
         try:
             for submission in self.rbot.subreddit(self.meme_subreddit).hot(limit=self.limit):
                 # Filter out different types of posts
@@ -89,7 +121,7 @@ class RedditMemeFarmer:
                 name = submission.title.rstrip().strip("/")
                 ext = os.path.splitext(urlparse(url).path)[1]
 
-                # Check if meme already exists
+                # Check if meme already exists, skip if it does
                 current_memes = [meme for meme in os.listdir(self.meme_folderpath) if
                                  os.path.isfile(os.path.join(self.meme_folderpath, meme))]
                 if name + ext in current_memes:
@@ -97,21 +129,7 @@ class RedditMemeFarmer:
 
                 # Download meme and save to filepath
                 if submission.is_video:
-                    # Handler for video files, download video and audio separately,
-                    # combine them, and then delete the temporary video and audio file
-                    audio_url = url[:-7] + "audio.mp4"
-                    filepath = os.path.join(self.meme_folderpath, name + ext)
-
-                    temp_video_filepath = os.path.join(self.meme_folderpath, "temp_" + name + ext)
-                    temp_audio_filepath = os.path.join(self.meme_folderpath, "temp_" + name + "_audio" + ext)
-                    urlretrieve(url, temp_video_filepath)
-                    urlretrieve(audio_url, temp_audio_filepath)
-
-                    video = mp.VideoFileClip(temp_video_filepath)
-                    video.write_videofile(filepath, audio=temp_audio_filepath)
-
-                    os.remove(temp_audio_filepath)
-                    os.remove(temp_video_filepath)
+                    filepath = self.__video_handler(url, name, ext)
                 else:
                     filepath = os.path.join(self.meme_folderpath, name + ext)
                     urlretrieve(url, filepath)
