@@ -9,7 +9,7 @@ from urllib.request import urlretrieve
 import moviepy.editor as mp
 import praw
 
-import config
+from config import REDDIT_CLIENT_ID, REDDIT_SECRET, REDDIT_USER_AGENT
 
 
 class RedditMemeFarmer:
@@ -18,9 +18,9 @@ class RedditMemeFarmer:
                             stream=sys.stdout, level=logging.INFO)
         self.logger = logging.getLogger(__name__)
 
-        self.rbot = praw.Reddit(client_id=config.REDDIT_CLIENT_ID,
-                                client_secret=config.REDDIT_SECRET,
-                                user_agent=config.REDDIT_USER_AGENT)
+        self.rbot = praw.Reddit(client_id=REDDIT_CLIENT_ID,
+                                client_secret=REDDIT_SECRET,
+                                user_agent=REDDIT_USER_AGENT)
         self.meme_folderpath = self.create_data_directory(folder)
         self.logger.info(f"Memes saved to {self.meme_folderpath}")
         self.meme_subreddit = subreddit

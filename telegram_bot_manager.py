@@ -15,7 +15,7 @@ from spongebobcase import tospongebob
 from telegram import Update, Message, ParseMode
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, Job
 
-import config
+from config import TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
 from reddit_meme_farmer import RedditMemeFarmer
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -24,17 +24,14 @@ logger = logging.getLogger(__name__)
 
 
 class TelegramBotManager(RedditMemeFarmer):
-    def __init__(self, group=True):
+    def __init__(self):
         super().__init__()
 
         # create the updater, that will automatically create also a dispatcher and a queue to
         # make them dialogue
-        if group:
-            self._chat_id = config.TELEGRAM_GROUP_CHAT_ID
-        else:
-            self._chat_id = config.TELEGRAM_CHAT_ID
+        self._chat_id = TELEGRAM_CHAT_ID
 
-        self._updater = Updater(token=config.TELEGRAM_TOKEN, use_context=True)
+        self._updater = Updater(token=TELEGRAM_TOKEN, use_context=True)
         self.dispatcher = self._updater.dispatcher
 
         # add handlers for start and help commands
@@ -54,7 +51,7 @@ class TelegramBotManager(RedditMemeFarmer):
 
         bot_name, bot_username = self._updater.bot.get_me()["first_name"], self._updater.bot.get_me()["username"]
         startup_text = f'{bot_name} (@{bot_username}) is now running using Telegram' \
-                       f' {"group" if group else "personal"} chat id'
+                       f' chat id {self._chat_id}'
         logger.info(startup_text)
 
         # set up variables
@@ -215,10 +212,10 @@ class TelegramBotManager(RedditMemeFarmer):
             logger.info(text)
             update.message.reply_text(text)
             self._updater.stop()
-        except Exception as exc:
+        except Exception as e:
             text = "Failed to shut down bot"
-            update.message.reply_text(text + f"{exc}")
-            logger.warning(text + f"{exc}")
+            update.message.reply_text(text + f"{e}")
+            logger.warning(text + f"{e}")
         else:
             text = "Bot stopped successfully"
             update.message.reply_text(text)

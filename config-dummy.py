@@ -5,3 +5,4 @@ REDDIT_USER_AGENT = ""
 
 # Telegram API
 TELEGRAM_TOKEN = ""
+TELEGRAM_CHAT_ID = ""
