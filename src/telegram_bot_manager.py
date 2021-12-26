@@ -15,7 +15,7 @@ from telegram import Update, Message, ParseMode
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, Job
 
 from config import TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
-from reddit_meme_farmer import RedditMemeFarmer
+from src.reddit_meme_farmer import RedditMemeFarmer
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     stream=sys.stdout, level=logging.INFO)

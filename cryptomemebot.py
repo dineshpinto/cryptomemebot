@@ -2,7 +2,7 @@ import logging
 import sys
 import time
 
-from telegram_bot_manager import TelegramBotManager
+from src.telegram_bot_manager import TelegramBotManager
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     stream=sys.stdout, level=logging.INFO)

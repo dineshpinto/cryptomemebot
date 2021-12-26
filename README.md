@@ -8,6 +8,7 @@ Cryptomembot is a friendly bot that pulls the top memes from `r/cryptocurrencyme
 - `/dailymemestop`: Stop fetching daily memes
 - `/conversationstart`: Start talking with an ML chatbot
 - `/conversationstop`: Stop the chatbot
+- `/help`: Help page with all commands
 
 ## Installation
 1. Create the conda environment from file
