@@ -76,7 +76,7 @@ class RedditMemeFarmer:
             filename += ".jpg"
         return filename
 
-    def __video_handler(self, url: str, name: str, ext: str):
+    def __video_handler(self, url: str, name: str, ext: str) -> str:
         """
         Handler for video files, download video and audio separately,
         combine them, and then delete the temporary video and audio file.
