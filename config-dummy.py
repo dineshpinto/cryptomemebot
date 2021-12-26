@@ -1,4 +1,4 @@
-# Reddit API details
+# Reddit API
 REDDIT_CLIENT_ID = ""
 REDDIT_SECRET = ""
 REDDIT_USER_AGENT = ""

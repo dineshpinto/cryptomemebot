@@ -5,7 +5,6 @@ import logging
 import os
 import random
 import sys
-import time
 import traceback
 
 import pytz
@@ -220,15 +219,3 @@ class TelegramBotManager(RedditMemeFarmer):
             text = "Bot stopped successfully"
             update.message.reply_text(text)
             logger.info(text)
-
-
-if __name__ == '__main__':
-    try:
-        tbm = TelegramBotManager()
-        tbm.start_polling()
-    except Exception as exc:
-        logger.error(f"Exception {exc}")
-        logger.error(f"Restarting polling in 60s...")
-        time.sleep(60)
-        tbm = TelegramBotManager()
-        tbm.start_polling()
