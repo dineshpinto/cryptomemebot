@@ -38,7 +38,7 @@ from config import REDDIT_CLIENT_ID, REDDIT_SECRET, REDDIT_USER_AGENT
 
 
 class RedditMemeFarmer:
-    def __init__(self, folder="memes", subreddit="cryptocurrencymemes"):
+    def __init__(self, folder: str = "memes", subreddit: str = "cryptocurrencymemes"):
         logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                             stream=sys.stdout, level=logging.INFO)
         self.logger = logging.getLogger(__name__)
@@ -53,7 +53,7 @@ class RedditMemeFarmer:
         self.limit = 10
 
     @staticmethod
-    def create_data_directory(folder) -> str:
+    def create_data_directory(folder: str) -> str:
         data_dir = os.path.join(os.getcwd(), folder)
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
