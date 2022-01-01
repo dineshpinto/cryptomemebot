@@ -25,3 +25,6 @@ Cryptomembot is a friendly bot that pulls the top memes from `r/cryptocurrencyme
 ## APIs used
 - Reddit API (`praw`)
 - Telegram API (`telegram` and `python-telegram-bot`)
+
+### Exporting the conda environment
+```conda env export --no-builds | grep -v "^prefix: " > conda-env.yml```
