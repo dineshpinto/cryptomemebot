@@ -12,12 +12,18 @@ Cryptomembot is a friendly bot that pulls the top memes from `r/cryptocurrencyme
 
 ## Installation
 1. Create the conda environment from file
-   + ```conda env create --file conda-env.yml```
+```shell
+conda env create --file conda-env.yml
+```
 2. Activate environment 
-   + ```conda activate cryptomemebot```
+```shell
+conda activate cryptomemebot
+```
 3. Rename `config-dummy.py`to `config.py`, and add in all your Reddit and Telegram API details
 5. Start cryptomemebot
-   + ```python cryptomemebot.py``` 
+```shell
+python cryptomemebot.py
+``` 
    
 ## ML chatbot
 - Chatterbot (`chatterbot`) trained on the English corpus
@@ -27,4 +33,6 @@ Cryptomembot is a friendly bot that pulls the top memes from `r/cryptocurrencyme
 - Telegram API (`telegram` and `python-telegram-bot`)
 
 ### Exporting the conda environment
-```conda env export --no-builds | grep -v "^prefix: " > conda-env.yml```
+```shell
+conda env export --no-builds | grep -v "^prefix: " > conda-env.yml
+```
